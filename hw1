@@ -1,0 +1,137 @@
+#include<iostream>
+#include<queue>
+using namespace std;
+
+int noden,linkn,reqn;//點的數量、邊數量及所求數量
+int adj[1000][1000];//每個點的相鄰關係
+int visit[1000];//拜訪與否(0 or 1)
+int i,j,k,l;//迴圈變數
+int dist[1000];//距離
+queue<int> q;//bfs list
+
+class node{
+public:
+  unsigned int sendto(int dstID);//sendto function(return next point)
+  void input(int ID,int index,int data);//input data
+  int output(int index);//output routtable
+private:
+  int routtable[1000];
+  unsigned int id;
+};
+
+void node::input(int ID,int index,int data){//input data
+  id=ID;
+  routtable[index]=data;
+}
+
+int node::output(int index){//output routtable
+  return routtable[index];
+}
+
+unsigned int node::sendto(int dstID){//sendto function(return next point)
+  return routtable[dstID];
+}
+
+void bfs(int source){
+  if(visit[source]==0){//還沒拜訪就把點放進queue裡面
+    q.push(source);
+    visit[source]=1;
+  }
+  if(!q.empty()){//若queue不是空的
+    for(i=0;i<q.size();i++){
+      int x=q.front();//取得queue裡面的第一個值
+      for(j=0;j<noden;j++){
+        if(adj[x][j]==1&&visit[j]==0){//第一個值的鄰居若未拜訪即放進queue，距離為第一個值的距離加一
+          q.push(j);
+          visit[j]=1;
+          dist[j]=dist[x]+1;
+        }
+      }
+    }
+    q.pop();//把第一個值丟掉
+    if(!q.empty()){//如果queue不是空的，就繼續bfs
+      bfs(q.front());
+    }
+  }
+}
+
+int main(){
+  node Node[1000];
+  cin >> noden >> linkn;
+  int a,b,c;
+  for(i=0;i<noden;i++){//初始化 adj[][](adjacent matrix)
+    for(j=0;j<noden;j++){
+      adj[i][j]=0;
+    }
+  }
+
+  for(i=0;i<linkn;i++){
+    cin >> a >> b >> c;  //輸入測資
+    for(j=0;j<noden;j++){//建立 adj matrix
+      if(b==j){
+        for(k=0;k<noden;k++){
+          if(c==k){
+            adj[j][k]=1;
+            adj[k][j]=1;
+          }
+        }
+      }
+    }
+  }
+
+  for(i=0;i<noden;i++){
+    for(j=0;j<noden;j++){
+      if(adj[i][j]==1){
+        Node[i].input(i,j,j);//把每個點的鄰居放進routtable
+      }
+      else if(i==j){
+        Node[i].input(i,i,i);//自己也要放進routtable
+      }
+    }
+  }
+
+  for(l=0;l<noden;l++){//每個點的bfs以及更新routtable
+    for(i=0;i<noden;i++){//初始化visit,dist array
+      visit[i]=0;
+      dist[i]=0;
+    }
+    bfs(l);
+    for(i=0;i<noden;i++){
+      if(adj[l][i]==0){//如果不是l(source)的鄰居(routtable還沒有填值)
+        int y=dist[i];//找與它距離小一的點
+        y--;
+        for(j=0;j<noden;j++){
+          if(adj[i][j]==1&&dist[j]==y){//找與它距離小一的點而且要是l(source)的鄰居
+            Node[l].input(l,i,j);
+            break;
+          }
+        }
+      }
+    }
+
+    for(i=0;i<noden;i++){//確定source點的routtable值都是他的鄰居，否則必需一直往上一層更新
+      int z=Node[l].output(i);
+      if(adj[l][z]==0&&i!=l){//不是鄰居
+        while(adj[l][z]==0){//一直往上找直到變成l(source)的鄰居
+          int tmp=Node[l].output(z);
+          Node[l].input(l,i,tmp);
+          z=tmp;
+        }
+      }
+    }
+  }
+
+  cin >> reqn;
+  int num,start,dest;
+  for(i=0;i<reqn;i++){
+    cin >> num >> start >> dest;
+    int x=Node[start].sendto(dest);
+    cout << num << ' ' << start << ' ';
+    while(x!=dest){
+      cout << x << ' ';
+      x=Node[x].sendto(dest);
+    }
+    cout << dest << endl;
+  }
+  return 0;
+}
