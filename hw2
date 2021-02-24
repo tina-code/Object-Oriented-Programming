@@ -1,0 +1,293 @@
+#include<iostream>
+#include<queue>
+using namespace std;
+
+int noden,linkn,reqn;//點的數量、邊數量及所求數量
+int adj[1000][1000];//每個點的相鄰關係
+int visit[1000];//拜訪與否(0 or 1)
+int i,j,k,l;//迴圈變數
+int dist[1000];//距離
+queue<int> q;//bfs list
+int mis[1000];//mis成員為1其餘為0
+int CDS[1000];//CDS成員為1
+
+class node{
+public:
+  unsigned int sendto(int dstID);//sendto function(return next point)
+  void input(int ID,int index,int data);//input data
+  int output(int index);//output routtable
+private:
+  int routtable[1000];
+  unsigned int id;
+};
+
+node Node[1000];
+
+void node::input(int ID,int index,int data){//input data
+  id=ID;
+  routtable[index]=data;
+}
+
+int node::output(int index){//output routtable
+  return routtable[index];
+}
+
+unsigned int node::sendto(int dstID){//sendto function(return next point)
+  return routtable[dstID];
+}
+
+void bfs(int source){
+  if(visit[source]==0){//還沒拜訪就把點放進queue裡面
+    q.push(source);
+    visit[source]=1;
+  }
+  if(!q.empty()){//若queue不是空的
+    for(i=0;i<q.size();i++){
+      int x=q.front();//取得queue裡面的第一個值
+      for(j=0;j<noden;j++){
+        if(adj[x][j]==1&&visit[j]==0){//第一個值的鄰居若未拜訪即放進queue，距離為第一個值的距離加一
+          q.push(j);
+          visit[j]=1;
+          dist[j]=dist[x]+1;
+        }
+      }
+    }
+    q.pop();//把第一個值丟掉
+    if(!q.empty()){//如果queue不是空的，就繼續bfs
+      bfs(q.front());
+    }
+  }
+}
+
+int checkmis(){//確認是否還有MIS成員可找(-1)
+  for(i=0;i<noden;i++){
+    if(mis[i]==-1){
+      return -1;
+    }
+  }
+  return 0;
+}
+
+void MIS(){
+  int flag=0;
+  for(i=0;i<noden;i++){//看是否為鄰居中最小的
+    flag=0;
+    if(mis[i]==-1){
+      for(j=0;j<noden;j++){
+        if(adj[i][j]==1&&i>j){//若不是最小，flag=1
+          flag=1;
+          break;
+        }
+      }
+      if(flag==0){//是最小的
+        mis[i]=1;
+        CDS[i]=1;
+        for(j=0;j<noden;j++){
+          if(adj[i][j]==1){
+            mis[j]=0;
+          }
+        }
+      }
+    }
+    while(checkmis()==-1){//看看是否還有mis[]=-1的點(表示仍可找MIS)
+      for(i=0;i<noden;i++){
+        if(mis[i]==-1){
+          for(j=0;j<noden;j++){
+            if(adj[i][j]==1&&mis[j]==-1&&i>j){
+              flag=1;
+              break;
+            }
+          }
+          if(flag==0){
+            mis[i]=1;
+            CDS[i]=1;
+            for(j=0;j<noden;j++){
+              if(adj[i][j]==1&&mis[j]<0){
+                mis[j]=0;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+int main(){
+  cin >> noden >> linkn;
+  int a,b,c;
+  for(i=0;i<noden;i++){//初始化 adj[][](adjacent matrix)
+    for(j=0;j<noden;j++){
+      adj[i][j]=0;
+    }
+  }
+
+  for(i=0;i<linkn;i++){
+    cin >> a >> b >> c;  //輸入測資
+    for(j=0;j<noden;j++){//建立 adj matrix
+      if(b==j){
+        for(k=0;k<noden;k++){
+          if(c==k){
+            adj[j][k]=1;
+            adj[k][j]=1;
+          }
+        }
+      }
+    }
+  }
+
+  for(i=0;i<noden;i++){//初始化mis與CDS陣列
+    mis[i]=-1;
+    CDS[i]=-1;
+  }
+
+  MIS();
+
+  for(l=0;l<noden;l++){//bfs每個CDS成員(原MIS成員)
+    if(CDS[l]==1){
+      for(i=0;i<noden;i++){//初始化visit,dist array
+        visit[i]=0;
+        dist[i]=0;
+      }
+      bfs(l);
+      for(i=0;i<noden;i++){
+        if(dist[i]<=3&&CDS[i]==1&&i!=l){//在距離小於等於3的CDS成員，找到它上一層的點加入CDS
+          int x=dist[i];
+          x--;
+          for(j=0;j<noden;j++){
+            if(adj[i][j]==1&&dist[j]==x){
+              CDS[j]=1;
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  for(l=0;l<noden;l++){//建立每個CDS成員到其他成員的rout table
+    if(CDS[l]==1){
+      for(j=0;j<noden;j++){//初始化visit,dist array
+        visit[j]=0;
+        dist[j]=0;
+      }
+      bfs(l);
+      for(j=0;j<noden;j++){//先把到j的上一層點填入l到j的rout table(routtable[j]=?)
+        if(j!=l&&CDS[j]==1){
+          int x=dist[j];
+          x--;
+          for(k=0;k<noden;k++){
+            if(k!=j&&adj[j][k]==1&&dist[k]==x){
+              Node[l].input(l,j,k);
+              break;
+            }
+          }
+        }
+      }
+      for(j=0;j<noden;j++){//確定每個routtable的值都是他的鄰居，否則必需一直往上一層更新
+        if(j!=l&&CDS[j]==1){
+          if(adj[l][j]==1){
+            continue;
+          }
+          int z=Node[l].output(j);
+          if(adj[l][z]==0){//不是鄰居
+            while(adj[l][z]==0){//一直往上找直到變成i的鄰居
+              int tmp=Node[l].output(z);
+              Node[l].input(l,j,tmp);
+              z=tmp;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  for(i=0;i<noden;i++){
+    for(j=0;j<noden;j++){
+      if(adj[i][j]==1){
+        Node[i].input(i,j,j);//把每個點的鄰居放進routtable
+      }
+      else if(i==j){
+        Node[i].input(i,i,i);//自己也要放進routtable
+      }
+    }
+  }
+
+  cin >> reqn;
+  int num,start,dest;
+
+  for(i=0;i<reqn;i++){
+    cin >> num >> start >> dest;
+    if(CDS[start]!=1&&CDS[dest]!=1){//兩者都非CDS成員，找s,e為代理人
+      int s,e;
+      for(j=0;j<noden;j++){
+        if(j!=start&&adj[j][start]==1){//找與它相鄰的CDS成員當代理人
+          s=j;
+          break;
+        }
+      }
+      for(j=0;j<noden;j++){
+        if(j!=dest&&adj[j][dest]==1){//找與它相鄰的CDS成員當代理人
+          e=j;
+          break;
+        }
+      }
+      if(s==e){//代理人相同，則直接印出路徑
+        cout<<num<<' '<<start<<' '<<s<<' '<<dest<<endl;
+        continue;
+      }
+      cout<< num << ' ' << start << ' ' << s << ' ' ;
+      int x=Node[s].sendto(e);
+      while(x!=e){
+        cout << x << ' ';
+        x=Node[x].sendto(e);
+      }
+      cout << e << ' ' << dest << endl;
+    }
+
+    if(CDS[start]!=1&&CDS[dest]==1){//起點非CDS成員，終點為CDS成員，找s為起點的代理人
+      int s;
+      for(j=0;j<noden;j++){
+        if(j!=start&&adj[j][start]==1){//找與它相鄰的CDS成員當代理人
+          s=j;
+          break;
+        }
+      }
+      cout<< num << ' ' << start << ' ' << s << ' ' ;
+      int x=Node[s].sendto(dest);
+      while(x!=dest){
+        cout << x << ' ';
+        x=Node[x].sendto(dest);
+      }
+      cout << dest << endl;
+    }
+
+    if(CDS[start]==1&&CDS[dest]!=1){//起點為CDS成員，終點非CDS成員，找e為起點的代理人
+      int e;
+      for(j=0;j<noden;j++){
+        if(j!=dest&&adj[j][dest]==1){//找與它相鄰的CDS成員當代理人
+          e=j;
+          break;
+        }
+      }
+      cout<< num << ' ' << start << ' ' ;
+      int x=Node[start].sendto(e);
+      while(x!=e){
+        cout << x << ' ';
+        x=Node[x].sendto(e);
+      }
+      cout << e << ' ' << dest << endl;
+    }
+
+    if(CDS[start]==1&&CDS[dest]==1){//兩者都是CDS成員
+      int x=Node[start].sendto(dest);
+      cout << num << ' ' << start << ' ' ;
+      while(x!=dest){
+        cout << x << ' ';
+        x=Node[x].sendto(dest);
+      }
+      cout << dest << endl;
+    }
+  }
+  return 0;
+}
